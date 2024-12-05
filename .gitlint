@@ -11,8 +11,8 @@
 # Note that this file is not exhaustive, it's just an example
 # Use 'gitlint generate-config' to generate a config file with all possible options
 [general]
-ignore=title-trailing-punctuation, T3, B6
-contrib = contrib-title-conventional-commits,CT1
+ignore=title-trailing-punctuation, T3, B6, CT1, M1
+contrib = contrib-title-conventional-commits, CT1
 
 # verbosity should be a value between 1 and 3, the commandline -v flags take precedence over this
 verbosity = 2
@@ -26,7 +26,7 @@ debug=true
 # extra-path=examples/
 
 [title-max-length]
-line-length=50
+line-length=70
 
 [title-must-not-contain-word]
 # Comma-separated list of words that should not occur in the title. Matching is case
