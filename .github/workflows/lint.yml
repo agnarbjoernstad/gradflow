@@ -1,0 +1,13 @@
+name: Lint python
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        python-version: '3.12'
+    - name: Install flake8
+      run: python3 -m pip install flake8
+    - name: Lint python
+      run: flake8
