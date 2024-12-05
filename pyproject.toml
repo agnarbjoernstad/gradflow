@@ -1,0 +1,10 @@
+[tool.semantic_release]
+version_variables = ["setup.py:__version__"]
+
+[tool.semantic_release.branches.main]
+match = "(main|master)"
+prerelease = false
+
+[tool.semantic_release.branches.set_up_repository]
+match = "^(?!main$).+"
+prerelease = false
