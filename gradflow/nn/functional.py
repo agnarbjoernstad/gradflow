@@ -1,4 +1,4 @@
-from gradflow.tensor import Tensor, zeros_like, ones_like
+from gradflow import Tensor, zeros_like, ones_like
 from typing import Any, Optional
 import numpy as np
 
