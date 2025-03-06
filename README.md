@@ -1,6 +1,7 @@
 # GradFlow
 
 
+[![numpy](https://img.shields.io/badge/powered_by-numpy-blue)](https://github.com/numpy/numpy)
 ![test](https://github.com/agnarbjoernstad/gradflow/actions/workflows/test.yml/badge.svg)
 
 
