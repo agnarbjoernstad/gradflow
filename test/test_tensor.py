@@ -1,7 +1,8 @@
-from gradflow.tensor import Tensor, topological_sort, zeros_like
+from gradflow._tensor import topological_sort
 from gradflow.autograd.grad_mode import no_grad
 from gradflow.nn.functional import relu, sigmoid, softmax
 from typing import Callable, Optional
+import gradflow as gf
 import pytest
 import numpy as np
 
@@ -22,16 +23,16 @@ t_2x2_f = None
 def setup():
     global t_1_f_1, t_1_f_2, t_1_f_3, t_3_f_1, t_3_f_2, t_3_f_3, t_3_f_4, t_3_f_5, t_2x1_f, t_2x2_f
 
-    t_1_f_1 = Tensor.tensor([1], dtype=np.float64)
-    t_1_f_2 = Tensor.tensor([2], dtype=np.float64)
-    t_1_f_3 = Tensor.tensor([3], dtype=np.float64)
-    t_3_f_1 = Tensor.tensor([1, 2, 3], dtype=np.float64)
-    t_3_f_2 = Tensor.tensor([1, 0, 0], dtype=np.float64)
-    t_3_f_3 = Tensor.tensor([7, 2, 8], dtype=np.float64)
-    t_3_f_4 = Tensor.tensor([3, 1, -4], dtype=np.float64)
-    t_3_f_5 = Tensor.tensor([3, 1, 4], dtype=np.float64)
-    t_2x1_f = Tensor.tensor([[3], [2]], dtype=np.float64)
-    t_2x2_f = Tensor.tensor([[1, 2], [4, 5]], dtype=np.float64)
+    t_1_f_1 = gf.tensor([1], dtype=np.float64)
+    t_1_f_2 = gf.tensor([2], dtype=np.float64)
+    t_1_f_3 = gf.tensor([3], dtype=np.float64)
+    t_3_f_1 = gf.tensor([1, 2, 3], dtype=np.float64)
+    t_3_f_2 = gf.tensor([1, 0, 0], dtype=np.float64)
+    t_3_f_3 = gf.tensor([7, 2, 8], dtype=np.float64)
+    t_3_f_4 = gf.tensor([3, 1, -4], dtype=np.float64)
+    t_3_f_5 = gf.tensor([3, 1, 4], dtype=np.float64)
+    t_2x1_f = gf.tensor([[3], [2]], dtype=np.float64)
+    t_2x2_f = gf.tensor([[1, 2], [4, 5]], dtype=np.float64)
 
 
 @no_grad
@@ -104,12 +105,12 @@ def test_topological_sort_reuse():
 
 @no_grad
 def finite_difference(
-    x: Tensor, graph: Callable[[Tensor], Tensor], h: float = 1e-12
-) -> Tensor:
+    x: gf.Tensor, graph: Callable[[gf.Tensor], gf.Tensor], h: float = 1e-12
+) -> gf.Tensor:
     with no_grad():
-        gradient = zeros_like(x)
+        gradient = gf.zeros_like(x)
         for idx in range(gradient.size):
-            _x = Tensor.tensor(x)
+            _x = gf.tensor(x)
             multi_index = np.unravel_index(idx, x.shape)
             f1 = graph(_x)
             _x[multi_index] += h
@@ -119,8 +120,8 @@ def finite_difference(
 
 
 def approximate_gradient(
-    t: Tensor,
-    graph: Callable[[Tensor], Tensor],
+    t: gf.Tensor,
+    graph: Callable[[gf.Tensor], gf.Tensor],
     exact_answer: Optional[np.ndarray] = None,
 ) -> None:
     r = graph(t)

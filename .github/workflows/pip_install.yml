@@ -1,0 +1,20 @@
+name: Pip install
+on:
+  pull_request:
+
+jobs:
+  pip_install:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install graphviz graphviz-dev -y
+        python3 -m pip install -r requirements.txt
+    - name: Install pytest
+      run: python3 -m pip install .
+    - name: Run pytests
+      run: python3 -c "import gradflow as gf; print(gf.__version__)"

@@ -6,6 +6,20 @@ import networkx as nx
 import numpy as np
 
 
+def tensor(
+    t_obj: List[Any] | float | int | bool | np.ndarray,
+    dtype: Optional[np.dtypes] = None,
+    requires_grad: bool = False,
+) -> "Tensor":
+    t_np = np.ascontiguousarray(np.array(t_obj))
+    if dtype is None:
+        dtype = t_np.dtype
+    t_np = t_np.astype(dtype)
+    t = Tensor(dtype=dtype, buffer=t_np, shape=t_np.shape, offset=0)
+    t.requires_grad = requires_grad
+    return t
+
+
 def _topological_sort(curr_node: "Tensor", curr_stack, visited_nodes) -> List["Tensor"]:
     if curr_node in curr_stack:
         raise ValueError("Topological sort is not possible for a graph with cycles.")
@@ -44,7 +58,6 @@ def run_backward(t: "Tensor") -> None:
             else:
                 curr_grad = ones_like(node)
             grad = derivative_function(curr_grad, *node.child_tensors)
-            print(node, derivative_function, node.child_tensors[idx], grad)
             node.child_tensors[idx].grad += grad
 
 
@@ -67,7 +80,7 @@ class Tensor(np.ndarray):
         return hash((str(id(self))))
 
     def clone(self) -> "Tensor":
-        c = Tensor.tensor(self)
+        c = tensor(self)
         for k, v in self.__dict__.items():
             setattr(c, k, deepcopy(v))
         return c
@@ -94,11 +107,11 @@ class Tensor(np.ndarray):
             else:
                 inputs_as_np.append(inp)
                 if not only_tensors_as_children:
-                    child_tensors.append(Tensor.tensor(inp))
+                    child_tensors.append(tensor(inp))
         t = super().__array_ufunc__(ufunc, method, *inputs_as_np, **kwargs)
         if t is NotImplemented:
             raise NotImplementedError(f"ufunc ({ufunc}) not implemented")
-        parent_tensor = Tensor.tensor(t)
+        parent_tensor = tensor(t)
         if is_grad_enabled():
             parent_tensor.child_tensors = child_tensors
             parent_tensor.derivative_functions = derivative_functions
@@ -171,7 +184,6 @@ class Tensor(np.ndarray):
         )
 
     def __truediv__(self, y):
-        # nominator and denominator.
         return self.__array_ufunc__(
             np.divide,
             "__call__",
@@ -184,7 +196,6 @@ class Tensor(np.ndarray):
         )
 
     def __rtruediv__(self, y):
-        # nominator and denominator.
         return self.__array_ufunc__(
             np.divide,
             "__call__",
@@ -249,7 +260,7 @@ class Tensor(np.ndarray):
             p,
             derivative_functions=(
                 lambda p_g, x, p: p_g * p * (x ** (p - 1)),
-                lambda p_g, x, p: p_g * (x**p) * np.log(x),  # * (x**p),
+                lambda p_g, x, p: p_g * (x**p) * np.log(x),
             ),
         )
 
@@ -266,11 +277,6 @@ class Tensor(np.ndarray):
         )
 
     def __matmul__(self, y):
-        # Forward shape:                mxo: mxn @ nxo
-        # Gradient backward shape:      mxo
-        # Gradient (mxn):               mxn: mxo @ nxo.T
-        # Gradient (nxo):               nxo: (mxo.T @ mxn).T
-
         return self.__array_ufunc__(
             np.matmul,
             "__call__",
@@ -303,9 +309,6 @@ class Tensor(np.ndarray):
         return np.array(self).__repr__()
 
     def __str__(self) -> str:
-        # print("shape", self.shape, str(self[0]))
-        # if len(self.shape) == 1 and self.shape[0] == 1:
-        #    return np.array(self).__str__()
         return np.array(self).__str__()
 
     @staticmethod
@@ -398,20 +401,6 @@ class Tensor(np.ndarray):
             )
             plt.title("Directed Acyclic Graph (DAG)")
             plt.show()
-
-    @staticmethod
-    def tensor(
-        t_obj: List[Any] | float | int | bool | np.ndarray,
-        dtype: Optional[np.dtypes] = None,
-        requires_grad: bool = False,
-    ) -> "Tensor":
-        t_np = np.ascontiguousarray(np.array(t_obj))
-        if dtype is None:
-            dtype = t_np.dtype
-        t_np = t_np.astype(dtype)
-        t = Tensor(dtype=dtype, buffer=t_np, shape=t_np.shape, offset=0)
-        t.requires_grad = requires_grad
-        return t
 
 
 def zeros_like(tensor) -> Tensor:
