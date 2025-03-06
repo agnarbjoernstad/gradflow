@@ -1,5 +1,9 @@
 # GradFlow
 
+
+![test](https://github.com/agnarbjoernstad/gradflow/actions/workflows/test.yml/badge.svg)
+
+
 ## Installation
 
 1. Clone the repository: ```git clone https://github.com/agnarbjoernstad/gradflow```
