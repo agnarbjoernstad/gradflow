@@ -1,6 +1,35 @@
 # CHANGELOG
 
 
+## v0.2.0 (2025-03-06)
+
+### Code Style
+
+* style: remove redundant comments and commented code ([`6a3fdc8`](https://github.com/agnarbjoernstad/gradflow/commit/6a3fdc8e1502c51d171fab08e9cd89a248f542b6))
+
+### Continuous Integration
+
+* ci: add black for linting ([`0645d89`](https://github.com/agnarbjoernstad/gradflow/commit/0645d89aa0b89a4cc5f9349efae7ad04e816ae94))
+
+### Documentation
+
+* docs: add numpy badge ([`44621d4`](https://github.com/agnarbjoernstad/gradflow/commit/44621d45e0fc18609cff8f4e8aa69139dca2fa2c))
+
+* docs: add test badge ([`3411688`](https://github.com/agnarbjoernstad/gradflow/commit/34116885ab058ff8860197bb28cd951acd973b99))
+
+* docs: provide example code for the library ([`d5ae9bc`](https://github.com/agnarbjoernstad/gradflow/commit/d5ae9bce008d9b8b323ca917b799d2bd74898adf))
+
+### Features
+
+* feat: make repository pip installable ([`a5641e3`](https://github.com/agnarbjoernstad/gradflow/commit/a5641e3d4111afbbd3a13e70a829a4fca10e4b0f))
+
+### Unknown
+
+* Merge pull request #10 from agnarbjoernstad/pip_install
+
+Pip install ([`ee462b3`](https://github.com/agnarbjoernstad/gradflow/commit/ee462b3f1a5d60ed027bde09c8ad99b41386af3d))
+
+
 ## v0.1.0 (2025-03-03)
 
 ### Bug Fixes
