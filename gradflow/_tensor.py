@@ -184,7 +184,6 @@ class Tensor(np.ndarray):
         )
 
     def __truediv__(self, y):
-        # nominator and denominator.
         return self.__array_ufunc__(
             np.divide,
             "__call__",
@@ -197,7 +196,6 @@ class Tensor(np.ndarray):
         )
 
     def __rtruediv__(self, y):
-        # nominator and denominator.
         return self.__array_ufunc__(
             np.divide,
             "__call__",
@@ -262,7 +260,7 @@ class Tensor(np.ndarray):
             p,
             derivative_functions=(
                 lambda p_g, x, p: p_g * p * (x ** (p - 1)),
-                lambda p_g, x, p: p_g * (x**p) * np.log(x),  # * (x**p),
+                lambda p_g, x, p: p_g * (x**p) * np.log(x),
             ),
         )
 
@@ -279,11 +277,6 @@ class Tensor(np.ndarray):
         )
 
     def __matmul__(self, y):
-        # Forward shape:                mxo: mxn @ nxo
-        # Gradient backward shape:      mxo
-        # Gradient (mxn):               mxn: mxo @ nxo.T
-        # Gradient (nxo):               nxo: (mxo.T @ mxn).T
-
         return self.__array_ufunc__(
             np.matmul,
             "__call__",
@@ -316,9 +309,6 @@ class Tensor(np.ndarray):
         return np.array(self).__repr__()
 
     def __str__(self) -> str:
-        # print("shape", self.shape, str(self[0]))
-        # if len(self.shape) == 1 and self.shape[0] == 1:
-        #    return np.array(self).__str__()
         return np.array(self).__str__()
 
     @staticmethod
