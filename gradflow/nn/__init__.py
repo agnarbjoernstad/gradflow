@@ -1,1 +1,3 @@
-from .functional import relu, sigmoid, softmax  # noqa: F401
+from .functional import relu, sigmoid, softmax, linear  # noqa: F401
+
+__all__ = ["relu", "sigmoid", "softmax", "linear"]

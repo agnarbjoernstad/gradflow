@@ -1,9 +1,15 @@
 from typing import Any, Callable, List, Optional
 from gradflow.autograd.grad_mode import no_grad, is_grad_enabled
+
+# from gradflow.nn.init import uniform_
 from copy import deepcopy
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+
+
+def numel(t: "Tensor") -> int:
+    return np.prod(t.shape)
 
 
 def tensor(
@@ -26,7 +32,7 @@ def _topological_sort(curr_node: "Tensor", curr_stack, visited_nodes) -> List["T
     if curr_node in visited_nodes:
         return []
     curr_stack.add(curr_node)
-    if curr_node.child_tensors is None:
+    if not hasattr(curr_node, "child_tensors") or curr_node.child_tensors is None:
         return [curr_node]
 
     sorted_nodes = []
@@ -44,11 +50,20 @@ def topological_sort(curr_node: "Tensor") -> List["Tensor"]:
     return _topological_sort(curr_node, set(), set())
 
 
+# import time
+
+# global_time = 0
+
+
 @no_grad
 def run_backward(t: "Tensor") -> None:
     topological_order = list(reversed(topological_sort(t)))
     start_index = topological_order.index(t)
+    # now = time.time()
+    # tot_time = 0
     for node in topological_order[start_index:]:
+        if not hasattr(node, "derivative_functions"):
+            continue
         for idx, derivative_function in enumerate(node.derivative_functions):
             if node.child_tensors[idx].grad is None:
                 node.child_tensors[idx].grad = zeros_like(node.child_tensors[idx])
@@ -57,8 +72,13 @@ def run_backward(t: "Tensor") -> None:
                 curr_grad = node.grad
             else:
                 curr_grad = ones_like(node)
+            # now_grad = time.time()
             grad = derivative_function(curr_grad, *node.child_tensors)
+            # tot_time += time.time() - now_grad
             node.child_tensors[idx].grad += grad
+    # global global_time
+    # print("Topological sort time:", time.time() - now, tot_time, global_time)
+    # global_time = 0
 
 
 class Tensor(np.ndarray):
@@ -116,9 +136,9 @@ class Tensor(np.ndarray):
             parent_tensor.child_tensors = child_tensors
             parent_tensor.derivative_functions = derivative_functions
 
-            assert (child_tensors is None and derivative_functions is None) or (
-                len(child_tensors) == len(derivative_functions)
-            )
+            # assert (child_tensors is None and derivative_functions is None) or (
+            #    len(child_tensors) == len(derivative_functions)
+            # )
         return parent_tensor
 
     def backward(self, *args, **kwargs):
@@ -190,7 +210,7 @@ class Tensor(np.ndarray):
             self,
             y,
             derivative_functions=(
-                lambda p_g, x, y: p_g * ones_like(x) / y,
+                lambda p_g, x, y: p_g / y,
                 lambda p_g, x, y: -p_g * x / (y**2),
             ),
         )
@@ -202,7 +222,7 @@ class Tensor(np.ndarray):
             y,
             self,
             derivative_functions=(
-                lambda p_g, x, y: p_g * ones_like(x) / y,
+                lambda p_g, x, y: p_g / y,
                 lambda p_g, x, y: -p_g * x / (y**2),
             ),
         )
@@ -214,8 +234,8 @@ class Tensor(np.ndarray):
             self,
             y,
             derivative_functions=(
-                lambda p_g, x, y: p_g * ones_like(x) * y,
-                lambda p_g, x, y: p_g * x * ones_like(y),
+                lambda p_g, _, y: p_g * y,
+                lambda p_g, x, _: p_g * x,
             ),
         )
 
@@ -229,8 +249,8 @@ class Tensor(np.ndarray):
             self,
             y,
             derivative_functions=(
-                lambda p_g, x, _: p_g * ones_like(x),
-                lambda p_g, _, y: -p_g * ones_like(y),
+                lambda p_g, _, __: p_g,
+                lambda p_g, _, __: -p_g,
             ),
         )
 
@@ -241,8 +261,8 @@ class Tensor(np.ndarray):
             self,
             y,
             derivative_functions=(
-                lambda p_g, x, _: p_g * ones_like(x),
-                lambda p_g, _, y: p_g * ones_like(y),
+                lambda p_g, _, __: p_g,
+                lambda p_g, _, __: p_g,
             ),
         )
 
@@ -276,30 +296,72 @@ class Tensor(np.ndarray):
             ),
         )
 
+    def unsqueeze(self, dim: int):
+        return self.__array_ufunc__(
+            np.expand_dims,
+            "__call__",
+            self,
+            dim,
+            derivative_functions=(lambda p_g, _, __: p_g.squeeze(dim),),
+        )
+
+    def squeeze(self, dim: int):
+        return self.__array_ufunc__(
+            np.squeeze,
+            "__call__",
+            self,
+            dim,
+            derivative_functions=(lambda p_g, _, __: p_g.unsqueeze(dim),),
+        )
+
     def __matmul__(self, y):
+        @no_grad
+        def der_l(p_g, _, y):
+            # global global_time
+            if len(p_g.size()) == 1:
+                p_g = p_g.unsqueeze(0)
+            if len(y.size()) == 1:
+                y = y.unsqueeze(-1)
+            # now = time.time()
+            ans = p_g @ y.T
+            # global_time += time.time() - now
+            return ans
+
+        @no_grad
+        def der_r(p_g, x, _):
+            # global global_time
+            if len(p_g.size()) == 1:
+                p_g = p_g.unsqueeze(0)
+            if len(x.size()) == 1:
+                x = x.unsqueeze(0)
+            # now = time.time()
+            ans = x.T @ p_g
+            # global_time += time.time() - now
+            return ans
+
         return self.__array_ufunc__(
             np.matmul,
             "__call__",
             self,
             y,
-            derivative_functions=(
-                lambda p_g, _, y: p_g @ y.T,
-                lambda p_g, x, _: (p_g.T @ x).T,
-            ),
+            derivative_functions=(der_l, der_r),
         )
+
+    def pow(self, p):
+        return self**p
 
     def sigmoid(self):
         return 1 / (1 + np.e ** (-self))
 
     def softmax(self, dim: int, dtype: Optional[Any] = None):
-        return np.e**self / np.e ** self.sum(axis=dim, keepdims=True)
+        return np.e**self / (np.e**self).sum(axis=dim, keepdims=True)
 
     def __neg__(self):
         return self.__array_ufunc__(
             np.negative,
             "__call__",
             self,
-            derivative_functions=(lambda p_g, x: -p_g * ones_like(x),),
+            derivative_functions=(lambda p_g, _: -p_g,),
         )
 
     def __imatmul__(self, y):
@@ -351,6 +413,14 @@ class Tensor(np.ndarray):
             only_tensors_as_children=True,
         )
 
+    def ascontiguousarray(self):
+        return self.__array_ufunc__(
+            np.ascontiguousarray,
+            "__call__",
+            self,
+            derivative_functions=(lambda p_g, _: p_g,),
+        )
+
     @property
     def T(self):
         return self.__array_ufunc__(
@@ -362,7 +432,7 @@ class Tensor(np.ndarray):
 
     def sum(self, *args, **kwargs):
         def der(p_g, x):
-            return p_g.sum(*args, **kwargs) * ones_like(x)
+            return p_g.sum(*args, **kwargs)
 
         return self.__array_ufunc__(
             np.sum,
@@ -384,8 +454,8 @@ class Tensor(np.ndarray):
         if g is None:
             g = nx.DiGraph()
         g.add_edges_from([(self, child) for child in self.child_tensors])
-        for child in self.child_tensors:
-            child.print_dependencies(g)
+        # for child in self.child_tensors:
+        ##    child.print_dependencies(g)
 
         if is_root:
             plt.figure(figsize=(8, 6))
@@ -402,10 +472,37 @@ class Tensor(np.ndarray):
             plt.title("Directed Acyclic Graph (DAG)")
             plt.show()
 
+    @staticmethod
+    def rand(*shape, dtype=None):
+        return tensor(np.random.rand(*shape), dtype=dtype)
 
-def zeros_like(tensor) -> Tensor:
-    return Tensor(tensor.shape, buffer=np.array([0.0] * tensor.size))
+    @staticmethod
+    def zeros(*shape, dtype=None):
+        return tensor(np.zeros(shape), dtype=dtype)
+
+    def dim(self) -> int:
+        return len(self.shape)
+
+    def size(self, dim=None) -> int:
+        if dim is None:
+            return self.shape
+        return self.shape[dim]
+
+    def uniform_(self, from_: float = 0, to_: float = 1):
+        return Tensor.rand(*self.shape, dtype=self.dtype) * (to_ - from_) + from_
+
+    def log(self):
+        return self.__array_ufunc__(
+            np.log,
+            "__call__",
+            self,
+            derivative_functions=(lambda p_g, x: p_g / x,),
+        )
 
 
-def ones_like(tensor) -> Tensor:
-    return Tensor(tensor.shape, buffer=np.array([1.0] * tensor.size))
+def zeros_like(t) -> Tensor:
+    return tensor(np.zeros(t.shape, dtype=t.dtype))
+
+
+def ones_like(t) -> Tensor:
+    return tensor(np.ones(t.shape, dtype=t.dtype))
