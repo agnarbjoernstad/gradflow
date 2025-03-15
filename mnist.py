@@ -2,6 +2,7 @@ from gradflow.nn.modules import linear, module, container, activation
 from gradflow.nn.modules.loss import MSELoss, CrossEntropyLoss
 from gradflow.autograd.grad_mode import no_grad
 from gradflow.nn.functional import relu, softmax
+from gradflow.optim.adam import Adam
 import gzip
 import matplotlib.pyplot as plt
 import numpy as np
@@ -61,6 +62,7 @@ if __name__ == "__main__":
     )
     loss_fn = CrossEntropyLoss()
     lr = 0.01
+    optimizer = Adam(model.parameters(), lr=lr)
 
     losses = []
     val_losses = []
@@ -78,6 +80,8 @@ if __name__ == "__main__":
         curr_val_loss = 0
         for i in tqdm(range(0, len(train_x), batch_size)):
             end = min(i + batch_size, len(train_x))
+            if end - i < batch_size:
+                continue
             now = time.time()
             p = model(train_x[i:end].reshape(end - i, -1) / 255)
             target = gf.zeros_like(p)
@@ -96,18 +100,19 @@ if __name__ == "__main__":
 
             # print(f"Loss: {loss}")  # , p: {p}, y: {train_y[i]}")
             # print("p", p, "y", train_y[i])
-            with no_grad():
-                for l in model:
-                    if hasattr(l, "weight"):
-                        s = l.weight.shape
-                        l.weight = l.weight - lr * l.weight.grad
-                        l.weight = l.weight.reshape(s)
-                        l.weight.grad = None
-                    if hasattr(l, "bias"):
-                        s = l.bias.shape
-                        l.bias = l.bias - lr * l.bias.grad.sum(0)
-                        l.bias = l.bias.reshape(s)
-                        l.bias.grad = None
+            optimizer.step()
+            # with no_grad():
+            #    for l in model:
+            #        if hasattr(l, "weight"):
+            #            s = l.weight.shape
+            #            l.weight = l.weight - lr * l.weight.grad
+            #            l.weight = l.weight.reshape(s)
+            #            l.weight.grad = None
+            #        if hasattr(l, "bias"):
+            #            s = l.bias.shape
+            #            l.bias = l.bias - lr * l.bias.grad.sum(0)
+            #            l.bias = l.bias.reshape(s)
+            #            l.bias.grad = None
 
             # if i % 500 == 0:
             #    print(f"Epoch: {epoch}, Loss: {loss}, Accuracy: {correct/total}")

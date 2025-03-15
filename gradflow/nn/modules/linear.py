@@ -33,6 +33,8 @@ class Linear(Module):
         else:
             self.bias = None
         self.reset_parameters()
+        self._register_parameter("weight", self.weight)
+        self._register_parameter("bias", self.bias)
 
     def reset_parameters(self) -> None:
         self.weight = init.kaiming_uniform_(self.weight, a=math.sqrt(5))

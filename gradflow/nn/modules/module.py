@@ -45,6 +45,9 @@ class Module:
     def _get_name(self):
         return self.__class__.__name__
 
+    def _register_parameter(self, name: str, param: Optional[gradflow.Tensor]) -> None:
+        self._parameters[name] = param
+
     def __repr__(self):
         # We treat the extra repr like the sub-module, one item per line
         extra_lines = []
@@ -72,3 +75,10 @@ class Module:
 
     def extra_repr(self) -> str:
         return ""
+
+    def parameters(self):
+        for name, param in self._parameters.items():
+            yield param
+        for name, module in self._modules.items():
+            for param in module.parameters():
+                yield param

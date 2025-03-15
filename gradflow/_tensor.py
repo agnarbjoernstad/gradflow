@@ -15,7 +15,7 @@ def numel(t: "Tensor") -> int:
 def tensor(
     t_obj: List[Any] | float | int | bool | np.ndarray,
     dtype: Optional[np.dtypes] = None,
-    requires_grad: bool = False,
+    requires_grad: bool = True,
 ) -> "Tensor":
     t_np = np.ascontiguousarray(np.array(t_obj))
     if dtype is None:
@@ -254,6 +254,10 @@ class Tensor(np.ndarray):
             ),
         )
 
+    def __isub__(self, y):
+        self = self.__sub__(y)  # TODO: Inplace and ID changes.
+        return self
+
     def __add__(self, y):
         return self.__array_ufunc__(
             np.add,
@@ -349,6 +353,14 @@ class Tensor(np.ndarray):
 
     def pow(self, p):
         return self**p
+
+    def sqrt(self):
+        return self.__array_ufunc__(
+            np.sqrt,
+            "__call__",
+            self,
+            derivative_functions=(lambda p_g, x: p_g / (2 * x.sqrt()),),
+        )
 
     def sigmoid(self):
         return 1 / (1 + np.e ** (-self))
