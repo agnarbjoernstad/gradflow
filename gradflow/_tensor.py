@@ -1,7 +1,6 @@
 from typing import Any, Callable, List, Optional
 from gradflow.autograd.grad_mode import no_grad, is_grad_enabled
 
-# from gradflow.nn.init import uniform_
 from copy import deepcopy
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -17,7 +16,7 @@ def tensor(
     dtype: Optional[np.dtypes] = None,
     requires_grad: bool = True,
 ) -> "Tensor":
-    t_np = np.ascontiguousarray(np.array(t_obj))
+    t_np = np.ascontiguousarray(np.array(t_obj, dtype=dtype))
     if dtype is None:
         dtype = t_np.dtype
     t_np = t_np.astype(dtype)
@@ -50,35 +49,53 @@ def topological_sort(curr_node: "Tensor") -> List["Tensor"]:
     return _topological_sort(curr_node, set(), set())
 
 
-# import time
-
-# global_time = 0
-
-
 @no_grad
 def run_backward(t: "Tensor") -> None:
     topological_order = list(reversed(topological_sort(t)))
     start_index = topological_order.index(t)
-    # now = time.time()
-    # tot_time = 0
     for node in topological_order[start_index:]:
         if not hasattr(node, "derivative_functions"):
             continue
         for idx, derivative_function in enumerate(node.derivative_functions):
             if node.child_tensors[idx].grad is None:
-                node.child_tensors[idx].grad = zeros_like(node.child_tensors[idx])
+                node.child_tensors[idx].grad = zeros_like(
+                    node.child_tensors[idx], dtype=np.float32
+                )
 
             if node.grad is not None:
                 curr_grad = node.grad
             else:
                 curr_grad = ones_like(node)
-            # now_grad = time.time()
             grad = derivative_function(curr_grad, *node.child_tensors)
-            # tot_time += time.time() - now_grad
+
+            # From broadcasting in the numpy docs
+            # (https://numpy.org/doc/stable/user/basics.broadcasting.html#general-broadcasting-rules):
+            # When operating on two arrays, NumPy compares their shapes
+            # element-wise. It starts with the trailing (i.e. rightmost)
+            # dimension and works its way left. Two dimensions are compatible
+            # when they are equal, or one of them is 1.
+            #
+            # Hence, we need to sum over the axis that are scaled up, and expand
+            # the axis that are scaled down.
+
+            longest_shape = max([len(grad.shape), len(node.child_tensors[idx].shape)])
+            grad_shape_ext = [1] * (longest_shape - len(grad.shape)) + list(grad.shape)
+            child_grad_shape_ext = [1] * (
+                longest_shape - len(node.child_tensors[idx].shape)
+            ) + list(node.child_tensors[idx].shape)
+            grad = grad.reshape(grad_shape_ext)
+
+            for i in range(longest_shape):
+                if grad_shape_ext[i] == child_grad_shape_ext[i]:
+                    continue
+                if grad_shape_ext[i] == 1:
+                    grad = np.repeat(grad, child_grad_shape_ext[i], axis=i)
+                else:
+                    grad = grad.sum(axis=i, keepdims=True)
+
+            grad = grad.reshape(node.child_tensors[idx].grad.shape)
+
             node.child_tensors[idx].grad += grad
-    # global global_time
-    # print("Topological sort time:", time.time() - now, tot_time, global_time)
-    # global_time = 0
 
 
 class Tensor(np.ndarray):
@@ -255,7 +272,11 @@ class Tensor(np.ndarray):
         )
 
     def __isub__(self, y):
-        self = self.__sub__(y)  # TODO: Inplace and ID changes.
+        c = self.clone()
+        r = c.__sub__(y)
+        self.update_values(r)
+        self.child_tensors = r.child_tensors
+        self.derivative_functions = r.derivative_functions
         return self
 
     def __add__(self, y):
@@ -274,7 +295,13 @@ class Tensor(np.ndarray):
         return self.__add__(x)
 
     def __iadd__(self, y):
-        return self.__add__(y)
+        c = self.clone()
+        r = c.__add__(y)
+        self.update_values(r)
+        self.child_tensors = r.child_tensors
+        self.derivative_functions = r.derivative_functions
+
+        return self
 
     def __pow__(self, p):
         return self.__array_ufunc__(
@@ -321,26 +348,20 @@ class Tensor(np.ndarray):
     def __matmul__(self, y):
         @no_grad
         def der_l(p_g, _, y):
-            # global global_time
             if len(p_g.size()) == 1:
                 p_g = p_g.unsqueeze(0)
             if len(y.size()) == 1:
                 y = y.unsqueeze(-1)
-            # now = time.time()
             ans = p_g @ y.T
-            # global_time += time.time() - now
             return ans
 
         @no_grad
         def der_r(p_g, x, _):
-            # global global_time
             if len(p_g.size()) == 1:
                 p_g = p_g.unsqueeze(0)
             if len(x.size()) == 1:
                 x = x.unsqueeze(0)
-            # now = time.time()
             ans = x.T @ p_g
-            # global_time += time.time() - now
             return ans
 
         return self.__array_ufunc__(
@@ -365,7 +386,9 @@ class Tensor(np.ndarray):
     def sigmoid(self):
         return 1 / (1 + np.e ** (-self))
 
-    def softmax(self, dim: int, dtype: Optional[Any] = None):
+    def softmax(self, dim: Optional[int], dtype: Optional[Any] = None):
+        if dim is None:
+            dim = -1
         return np.e**self / (np.e**self).sum(axis=dim, keepdims=True)
 
     def __neg__(self):
@@ -377,7 +400,12 @@ class Tensor(np.ndarray):
         )
 
     def __imatmul__(self, y):
-        return self.__matmul__(y)
+        c = self.clone()
+        r = c.__matmul__(y)
+        self.update_values(r)
+        self.child_tensors = r.child_tensors
+        self.derivative_functions = r.derivative_functions
+        return self
 
     def __repr__(self):
         return np.array(self).__repr__()
@@ -459,7 +487,17 @@ class Tensor(np.ndarray):
         return self.sum() / self.shape[0]
 
     def update_values(self, new_values) -> None:
-        np.copyto(self, new_values)
+        c = self.clone()
+        self.__dict__.clear()
+        self.__setstate__(
+            (
+                new_values.shape,
+                new_values.dtype,
+                new_values.flags["F_CONTIGUOUS"],
+                new_values.tobytes(),
+            )
+        )
+        self.__dict__.update(c.__dict__)
 
     def plot_dependency_graph(self, g=None):
         is_root = g is None
@@ -511,10 +549,26 @@ class Tensor(np.ndarray):
             derivative_functions=(lambda p_g, x: p_g / x,),
         )
 
+    def detach(self):
+        c = self.clone()
+        c.requires_grad = False
+        return c
 
-def zeros_like(t) -> Tensor:
-    return tensor(np.zeros(t.shape, dtype=t.dtype))
+    def numpy(self):
+        if self.requires_grad:
+            raise ValueError(
+                "Can't call numpy() on Tensor that requires grad. Use tensor.detach().numpy() instead."
+            )
+        return np.array(self)
 
 
-def ones_like(t) -> Tensor:
-    return tensor(np.ones(t.shape, dtype=t.dtype))
+def zeros_like(t, dtype=None) -> Tensor:
+    if dtype is None:
+        dtype = t.dtype
+    return tensor(np.zeros(t.shape, dtype=dtype))
+
+
+def ones_like(t, dtype=None) -> Tensor:
+    if dtype is None:
+        dtype = t.dtype
+    return tensor(np.ones(t.shape, dtype=dtype))

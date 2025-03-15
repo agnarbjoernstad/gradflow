@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import gradflow as gf
 import cv2
-import time
 from tqdm import tqdm
 
 
@@ -61,7 +60,7 @@ if __name__ == "__main__":
         activation.Softmax(),
     )
     loss_fn = CrossEntropyLoss()
-    lr = 0.01
+    lr = 0.001
     optimizer = Adam(model.parameters(), lr=lr)
 
     losses = []
@@ -78,67 +77,54 @@ if __name__ == "__main__":
         val_total = 0
         curr_train_loss = 0
         curr_val_loss = 0
-        for i in tqdm(range(0, len(train_x), batch_size)):
+        train_bar = tqdm(
+            range(0, len(train_x), batch_size), desc="Train epoch {epoch}/{epochs}"
+        )
+        for i in train_bar:
+            optimizer.zero_grad()
             end = min(i + batch_size, len(train_x))
-            if end - i < batch_size:
-                continue
-            now = time.time()
             p = model(train_x[i:end].reshape(end - i, -1) / 255)
             target = gf.zeros_like(p)
             target[np.array(range(end - i)), train_y[i:end, 0]] = 1
             loss = loss_fn(p, target)
-            now_backward = time.time()
             loss.backward()
-            time_backward = time.time() - now_backward
 
-            losses.append(float(loss))
+            curr_loss = loss.detach().numpy()[0]
+            losses.append(curr_loss)
+            curr_train_loss += curr_loss * (end - i)
+            total += end - i
+
             correct += (
                 np.array(p.argmax(axis=-1) - np.array(train_y[i:end]).reshape(-1)) == 0
             ).sum()
-            total += end - i
-            curr_train_loss += float(loss) * (end - i)
+            train_bar.set_description(
+                f"Train epoch {epoch}/{epochs}: loss {(curr_train_loss/total):.5f}, acc. {correct/total*100:.2f}%"
+            )
 
-            # print(f"Loss: {loss}")  # , p: {p}, y: {train_y[i]}")
-            # print("p", p, "y", train_y[i])
             optimizer.step()
-            # with no_grad():
-            #    for l in model:
-            #        if hasattr(l, "weight"):
-            #            s = l.weight.shape
-            #            l.weight = l.weight - lr * l.weight.grad
-            #            l.weight = l.weight.reshape(s)
-            #            l.weight.grad = None
-            #        if hasattr(l, "bias"):
-            #            s = l.bias.shape
-            #            l.bias = l.bias - lr * l.bias.grad.sum(0)
-            #            l.bias = l.bias.reshape(s)
-            #            l.bias.grad = None
-
-            # if i % 500 == 0:
-            #    print(f"Epoch: {epoch}, Loss: {loss}, Accuracy: {correct/total}")
-
-            #    # Plot the latest prediction and the probability distribution with opencv.
-            #    # image = np.asarray(train_x[i]).squeeze()
-            #    #cv2.imwrite("image.png", train_x[i])
 
         with no_grad():
-            for i in tqdm(range(0, len(val_x), batch_size)):
+            val_bar = tqdm(
+                range(0, len(val_x), batch_size), desc="Val epoch {epoch}/{epochs}"
+            )
+            for i in val_bar:
                 end = min(i + batch_size, len(val_x))
-                now = time.time()
                 p = model(val_x[i:end].reshape(end - i, -1) / 255)
                 target = gf.zeros_like(p)
                 target[np.array(range(end - i)), val_y[i:end, 0]] = 1
                 loss = loss_fn(p, target)
 
-                val_losses.append(float(loss) / (end - i))
+                curr_loss = loss.detach().numpy()[0]
+                val_losses.append(curr_loss)
                 val_correct += (
                     np.array(p.argmax(axis=-1) - np.array(val_y[i:end]).reshape(-1))
                     == 0
                 ).sum()
                 val_total += end - i
-                curr_val_loss += float(loss) * (end - i)
+                curr_val_loss += curr_loss * (end - i)
+
+                val_bar.set_description(
+                    f"Val epoch {epoch}/{epochs}: loss {(curr_val_loss/val_total):.5f} acc. {val_correct/val_total*100:.2f}%"
+                )
         loss = curr_train_loss / total
         val_loss = curr_val_loss / val_total
-        print(
-            f"Epoch: {epoch}, loss {loss}, val loss: {val_loss}, accuracy {correct/total}, val accuracy: {val_correct/val_total}"
-        )

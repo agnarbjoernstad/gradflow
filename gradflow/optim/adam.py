@@ -24,6 +24,7 @@ class Adam(Optimizer):
     ):
         self.moment = {}
         self.velocity = {}
+        self.velocity_max = {}
         defaults = dict(
             lr=lr,
             betas=betas,
@@ -45,30 +46,35 @@ class Adam(Optimizer):
             if p.grad is None or p.requires_grad is False:
                 continue
             if self.defaults["maximize"]:
-                grad = p.grad
-            else:
                 grad = -p.grad
+            else:
+                grad = p.grad
 
             if self.defaults["weight_decay"] > 1e-12:
                 grad += self.defaults["weight_decay"] * p
 
             prev_moment = self.moment.get(id(p), zeros_like(grad))
-            self.moment[id(p)] = prev_moment
             moment = (
                 self.defaults["betas"][0] * prev_moment
                 + (1 - self.defaults["betas"][0]) * grad
             )
+            self.moment[id(p)] = moment
+
             prev_velocity = self.velocity.get(id(p), zeros_like(grad))
-            self.velocity[id(p)] = prev_velocity
             velocity = (
                 self.defaults["betas"][1] * prev_velocity
                 + (1 - self.defaults["betas"][1]) * grad**2
             )
+            self.velocity[id(p)] = velocity
+
             moment_hat = moment / (1 - self.defaults["betas"][0])
             velocity_hat = velocity / (1 - self.defaults["betas"][1])
 
             if self.defaults["amsgrad"]:
-                velocity_hat_max = gf.maximum(velocity_hat, p.velocity_hat)
+                velocity_hat_max = gf.maximum(
+                    self.velocity_max.get(id(p), zeros_like(grad)), velocity_hat
+                )
+                self.velocity[id(p)] = velocity_hat_max
                 p -= (
                     self.defaults["lr"]
                     * moment_hat
