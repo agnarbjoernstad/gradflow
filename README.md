@@ -40,3 +40,8 @@ for i in range(10):
 ### Train on MNIST
 
 ```python3 -m script.mnist```
+
+### Fit sine function with a neural network
+```python3 -m script.sin```
+
+<video width=640 src='https://github.com/user-attachments/assets/a69488cc-ef97-4cc8-b09d-8c3d99aded28' />
