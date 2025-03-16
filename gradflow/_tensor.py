@@ -31,7 +31,7 @@ def _topological_sort(curr_node: "Tensor", curr_stack, visited_nodes) -> List["T
     if curr_node in visited_nodes:
         return []
     curr_stack.add(curr_node)
-    if curr_node.child_tensors is None:
+    if not hasattr(curr_node, "child_tensors") or curr_node.child_tensors is None:
         return [curr_node]
 
     sorted_nodes = []
@@ -54,9 +54,15 @@ def run_backward(t: "Tensor") -> None:
     topological_order = list(reversed(topological_sort(t)))
     start_index = topological_order.index(t)
     for node in topological_order[start_index:]:
+        if not hasattr(node, "derivative_functions"):
+            continue
         for idx, derivative_function in enumerate(node.derivative_functions):
+            if not isinstance(node.child_tensors[idx], Tensor):
+                continue
             if node.child_tensors[idx].grad is None:
-                node.child_tensors[idx].grad = zeros_like(node.child_tensors[idx])
+                node.child_tensors[idx].grad = zeros_like(
+                    node.child_tensors[idx], dtype=np.float32
+                )
 
             if node.grad is not None:
                 curr_grad = node.grad
