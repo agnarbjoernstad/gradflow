@@ -26,19 +26,19 @@ def tensor(
 
 
 def _topological_sort(curr_node: "Tensor", curr_stack, visited_nodes) -> List["Tensor"]:
-    if curr_node in curr_stack:
+    if id(curr_node) in curr_stack:
         raise ValueError("Topological sort is not possible for a graph with cycles.")
-    if curr_node in visited_nodes:
+    if id(curr_node) in visited_nodes:
         return []
-    curr_stack.add(curr_node)
+    curr_stack.add(id(curr_node))
     if not hasattr(curr_node, "child_tensors") or curr_node.child_tensors is None:
         return [curr_node]
 
     sorted_nodes = []
     for node in curr_node.child_tensors:
         sorted_nodes.extend(_topological_sort(node, curr_stack, visited_nodes))
-    visited_nodes.add(curr_node)
-    curr_stack.remove(curr_node)
+    visited_nodes.add(id(curr_node))
+    curr_stack.remove(id(curr_node))
 
     sorted_nodes.append(curr_node)
 
@@ -146,7 +146,7 @@ class Tensor(np.ndarray):
             else:
                 inputs_as_np.append(inp)
                 if not only_tensors_as_children:
-                    child_tensors.append(tensor(inp))
+                    child_tensors.append(np.array(inp))
         t = super().__array_ufunc__(ufunc, method, *inputs_as_np, **kwargs)
         if t is NotImplemented:
             raise NotImplementedError(f"ufunc ({ufunc}) not implemented")
