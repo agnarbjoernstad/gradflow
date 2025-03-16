@@ -223,7 +223,7 @@ class Tensor(np.ndarray):
             self,
             y,
             derivative_functions=(
-                lambda p_g, x, y: p_g * ones_like(x) / y,
+                lambda p_g, x, y: p_g / y,
                 lambda p_g, x, y: -p_g * x / (y**2),
             ),
         )
@@ -235,7 +235,7 @@ class Tensor(np.ndarray):
             y,
             self,
             derivative_functions=(
-                lambda p_g, x, y: p_g * ones_like(x) / y,
+                lambda p_g, x, y: p_g / y,
                 lambda p_g, x, y: -p_g * x / (y**2),
             ),
         )
@@ -247,8 +247,8 @@ class Tensor(np.ndarray):
             self,
             y,
             derivative_functions=(
-                lambda p_g, x, y: p_g * ones_like(x) * y,
-                lambda p_g, x, y: p_g * x * ones_like(y),
+                lambda p_g, _, y: p_g * y,
+                lambda p_g, x, _: p_g * x,
             ),
         )
 
@@ -262,8 +262,8 @@ class Tensor(np.ndarray):
             self,
             y,
             derivative_functions=(
-                lambda p_g, x, _: p_g * ones_like(x),
-                lambda p_g, _, y: -p_g * ones_like(y),
+                lambda p_g, _, __: p_g,
+                lambda p_g, _, __: -p_g,
             ),
         )
 
@@ -274,8 +274,8 @@ class Tensor(np.ndarray):
             self,
             y,
             derivative_functions=(
-                lambda p_g, x, _: p_g * ones_like(x),
-                lambda p_g, _, y: p_g * ones_like(y),
+                lambda p_g, _, __: p_g,
+                lambda p_g, _, __: p_g,
             ),
         )
 
@@ -384,7 +384,7 @@ class Tensor(np.ndarray):
             np.negative,
             "__call__",
             self,
-            derivative_functions=(lambda p_g, x: -p_g * ones_like(x),),
+            derivative_functions=(lambda p_g, _: -p_g,),
         )
 
     def __imatmul__(self, y):
@@ -455,7 +455,7 @@ class Tensor(np.ndarray):
 
     def sum(self, *args, **kwargs):
         def der(p_g, x):
-            return p_g.sum(*args, **kwargs) * ones_like(x)
+            return p_g.sum(*args, **kwargs)
 
         return self.__array_ufunc__(
             np.sum,
