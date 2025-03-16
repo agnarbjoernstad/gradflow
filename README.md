@@ -5,6 +5,33 @@
 ![test](https://github.com/agnarbjoernstad/gradflow/actions/workflows/test.yml/badge.svg)
 
 
+## Roadmap
+ - [X] Basic tensor operations
+ - [X] nn.Module
+ - [X] nn.Sequential
+ - [X] nn.Linear
+ - [X] nn.MSELoss
+ - [X] nn.BCELoss
+ - [X] Batch
+ - [ ] nn.BCEWithLogitsLoss
+ - [ ] nn.CrossEntropyLoss
+ - [X] optim.Adam
+ - [X] Train on MNIST
+ - [ ] nn.Conv1D
+ - [ ] nn.Conv2D
+ - [ ] nn.Dropout
+ - [ ] nn.Flatten
+ - [ ] nn.Reshape
+ - [ ] nn.BatchNorm1d
+ - [ ] nn.BatchNorm2d
+ - [ ] nn.LayerNorm
+ - [ ] nn.RMSNorm
+ - [ ] nn.Transformer
+ - [ ] Train on Titanic
+ - [ ] Loading of weights
+
+
+
 ## Installation
 
 1. Clone the repository: ```git clone https://github.com/agnarbjoernstad/gradflow```
