@@ -267,6 +267,14 @@ class Tensor(np.ndarray):
             ),
         )
 
+    def __isub__(self, y):
+        c = self.clone()
+        r = c.__sub__(y)
+        self.update_values(r)
+        self.child_tensors = r.child_tensors
+        self.derivative_functions = r.derivative_functions
+        return self
+
     def __add__(self, y):
         return self.__array_ufunc__(
             np.add,
@@ -283,7 +291,13 @@ class Tensor(np.ndarray):
         return self.__add__(x)
 
     def __iadd__(self, y):
-        return self.__add__(y)
+        c = self.clone()
+        r = c.__add__(y)
+        self.update_values(r)
+        self.child_tensors = r.child_tensors
+        self.derivative_functions = r.derivative_functions
+
+        return self
 
     def __pow__(self, p):
         return self.__array_ufunc__(
@@ -388,7 +402,12 @@ class Tensor(np.ndarray):
         )
 
     def __imatmul__(self, y):
-        return self.__matmul__(y)
+        c = self.clone()
+        r = c.__matmul__(y)
+        self.update_values(r)
+        self.child_tensors = r.child_tensors
+        self.derivative_functions = r.derivative_functions
+        return self
 
     def __repr__(self):
         return np.array(self).__repr__()
@@ -470,7 +489,17 @@ class Tensor(np.ndarray):
         return self.sum() / self.shape[0]
 
     def update_values(self, new_values) -> None:
-        np.copyto(self, new_values)
+        c = self.clone()
+        self.__dict__.clear()
+        self.__setstate__(
+            (
+                new_values.shape,
+                new_values.dtype,
+                new_values.flags["F_CONTIGUOUS"],
+                new_values.tobytes(),
+            )
+        )
+        self.__dict__.update(c.__dict__)
 
     def plot_dependency_graph(self, g=None):
         is_root = g is None
