@@ -36,3 +36,7 @@ for i in range(10):
     w = w - lr * w.grad
     print(f"Loss: {loss}, w: {w}")
 ```
+
+### Train on MNIST
+
+```python3 -m script.mnist```
