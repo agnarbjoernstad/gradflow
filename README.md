@@ -61,6 +61,7 @@ for i in range(10):
     loss = (w.softmax(dim=0) * x).sum()
     loss.backward()
     w = w - lr * w.grad
+    w.grad = None
     print(f"Loss: {loss}, w: {w}")
 ```
 
