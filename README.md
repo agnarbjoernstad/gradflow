@@ -39,7 +39,7 @@
 
 ## Examples
 
-Check the installed version of the package:
+### Check the installed version of the package:
 
 ```python
 import gradflow as gf
@@ -48,7 +48,7 @@ import gradflow as gf
 print(gf.__version__)
 ```
 
-Example optimization problem:
+### Example optimization problem:
 ```python
 import gradflow as gf
 
