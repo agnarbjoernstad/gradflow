@@ -512,8 +512,6 @@ class Tensor(np.ndarray):
         if g is None:
             g = nx.DiGraph()
         g.add_edges_from([(self, child) for child in self.child_tensors])
-        for child in self.child_tensors:
-            child.print_dependencies(g)
 
         if is_root:
             plt.figure(figsize=(8, 6))
