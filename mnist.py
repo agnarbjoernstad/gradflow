@@ -6,7 +6,11 @@ from gradflow.optim.adam import Adam
 from gradflow.optim.optimizer import Optimizer
 import gzip
 import matplotlib.pyplot as plt
-import numpy as np
+
+import numpy
+
+# import numpy as np
+import cupy as np
 import gradflow as gf
 import cv2
 from typing import Optional
@@ -21,10 +25,8 @@ def read_labels(path):
             buf = f.read(1)
             if not buf:
                 break
-            labels.append(
-                gf.tensor(np.frombuffer(buf, dtype=np.uint8).astype(np.int64))
-            )
-    return gf.tensor(labels)
+            labels.append(numpy.frombuffer(buf, dtype=np.uint8).astype(np.int64))
+    return np.array(numpy.array(labels)).view(gf.Tensor)
 
 
 def read_images(path):
@@ -36,9 +38,9 @@ def read_images(path):
             buf = f.read(image_size * image_size)
             if not buf:
                 break
-            data = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
-            images.append(gf.tensor(data.reshape(image_size, image_size, 1)))
-    return gf.tensor(images)
+            data = numpy.frombuffer(buf, dtype=np.uint8).astype(np.float32)
+            images.append(data.reshape(image_size, image_size, 1))
+    return np.array(numpy.array(images)).view(gf.Tensor)
 
 
 def run_epoch(
@@ -61,29 +63,29 @@ def run_epoch(
         range(0, len(x), batch_size), desc="{dataset_str} epoch {epoch}/{epochs}"
     )
     for i in bar:
-        with set_grad_enabled(train):
-            end = min(i + batch_size, len(x))
-            p = model(x[i:end].reshape(end - i, -1) / 255)
-            target = gf.zeros_like(p)
-            target[np.array(range(end - i)), y[i:end, 0]] = 1
-            loss = loss_fn(p, target)
+        # with set_grad_enabled(train):
+        end = min(i + batch_size, len(x))
+        p = model(x[i:end].reshape(end - i, -1) / 255)
+        target = gf.zeros_like(p)
+        target[np.array(range(end - i)), y[i:end, 0]] = 1
+        loss = loss_fn(p, target)
 
-            curr_loss = loss.detach().numpy()[0]
-            curr_loss += curr_loss * (end - i)
-            total += end - i
+        curr_loss = loss.detach().numpy()[0]
+        curr_loss += curr_loss * (end - i)
+        total += end - i
 
-            correct += (
-                np.array(p.argmax(axis=-1) - np.array(y[i:end]).reshape(-1)) == 0
-            ).sum()
+        correct += (
+            np.array(p.argmax(axis=-1) - np.array(y[i:end]).reshape(-1)) == 0
+        ).sum()
 
-            bar.set_description(
-                f"{dataset_str} epoch {epoch}/{epochs}: loss {(curr_loss/total):.5f}, acc. {correct/total*100:.2f}%"
-            )
+        bar.set_description(
+            f"{dataset_str} epoch {epoch}/{epochs}: loss {(curr_loss/total):.5f}, acc. {correct/total*100:.2f}%"
+        )
 
-            if train:
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+        if train:
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
     return curr_loss, correct, total
 
 

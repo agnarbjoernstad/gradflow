@@ -40,11 +40,13 @@ class Adam(Optimizer):
         )
         super().__init__(params, defaults)
 
-    @no_grad()
+    # @no_grad()
     def step(self):
         for p in self.params:
-            if p.grad is None or p.requires_grad is False:
+            if p.grad is None:  # or p.requires_grad is False:
+                # print(p.grad, p.requires_grad)
                 continue
+            print("grad")
             if self.defaults["maximize"]:
                 grad = -p.grad
             else:
@@ -81,8 +83,10 @@ class Adam(Optimizer):
                     / (velocity_hat_max.sqrt() + self.defaults["eps"])
                 )
             else:
-                p -= (
+                diff = (
                     self.defaults["lr"]
                     * moment_hat
                     / (velocity_hat.sqrt() + self.defaults["eps"])
                 )
+
+                p -= diff

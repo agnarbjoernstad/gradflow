@@ -9,4 +9,5 @@ class Optimizer:
 
     def zero_grad(self) -> None:
         for p in self.params:
+            del p.grad
             p.grad = None

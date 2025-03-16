@@ -4,7 +4,10 @@ from gradflow.autograd.grad_mode import no_grad, is_grad_enabled
 from copy import deepcopy
 import matplotlib.pyplot as plt
 import networkx as nx
-import numpy as np
+
+# import numpy as np
+
+import cupy as np
 
 
 def numel(t: "Tensor") -> int:
@@ -13,32 +16,34 @@ def numel(t: "Tensor") -> int:
 
 def tensor(
     t_obj: List[Any] | float | int | bool | np.ndarray,
-    dtype: Optional[np.dtypes] = None,
+    # dtype: Optional[np.dtypes] = None,
+    dtype=None,
     requires_grad: bool = True,
 ) -> "Tensor":
     t_np = np.ascontiguousarray(np.array(t_obj, dtype=dtype))
     if dtype is None:
         dtype = t_np.dtype
     t_np = t_np.astype(dtype)
-    t = Tensor(dtype=dtype, buffer=t_np, shape=t_np.shape, offset=0)
+    t = np.array(t_np).view(Tensor)
+    # t = Tensor(dtype=dtype, buffer=t_np, shape=t_np.shape, offset=0)
     t.requires_grad = requires_grad
     return t
 
 
 def _topological_sort(curr_node: "Tensor", curr_stack, visited_nodes) -> List["Tensor"]:
-    if curr_node in curr_stack:
+    if id(curr_node) in curr_stack:
         raise ValueError("Topological sort is not possible for a graph with cycles.")
-    if curr_node in visited_nodes:
+    if id(curr_node) in visited_nodes:
         return []
-    curr_stack.add(curr_node)
+    curr_stack.add(id(curr_node))
     if not hasattr(curr_node, "child_tensors") or curr_node.child_tensors is None:
         return [curr_node]
 
     sorted_nodes = []
     for node in curr_node.child_tensors:
         sorted_nodes.extend(_topological_sort(node, curr_stack, visited_nodes))
-    visited_nodes.add(curr_node)
-    curr_stack.remove(curr_node)
+    visited_nodes.add(id(curr_node))
+    curr_stack.remove(id(curr_node))
 
     sorted_nodes.append(curr_node)
 
@@ -49,7 +54,7 @@ def topological_sort(curr_node: "Tensor") -> List["Tensor"]:
     return _topological_sort(curr_node, set(), set())
 
 
-@no_grad
+# @no_grad
 def run_backward(t: "Tensor") -> None:
     topological_order = list(reversed(topological_sort(t)))
     start_index = topological_order.index(t)
@@ -57,6 +62,10 @@ def run_backward(t: "Tensor") -> None:
         if not hasattr(node, "derivative_functions"):
             continue
         for idx, derivative_function in enumerate(node.derivative_functions):
+            # Check that the type is Tensor.
+            if not isinstance(node.child_tensors[idx], Tensor):
+                continue
+
             if node.child_tensors[idx].grad is None:
                 node.child_tensors[idx].grad = zeros_like(
                     node.child_tensors[idx], dtype=np.float32
@@ -95,7 +104,8 @@ def run_backward(t: "Tensor") -> None:
 
             grad = grad.reshape(node.child_tensors[idx].grad.shape)
 
-            node.child_tensors[idx].grad += grad
+            # node.child_tensors[idx].grad += grad
+            node.child_tensors[idx].grad = node.child_tensors[idx].grad + grad
 
 
 class Tensor(np.ndarray):
@@ -145,10 +155,13 @@ class Tensor(np.ndarray):
                 inputs_as_np.append(inp)
                 if not only_tensors_as_children:
                     child_tensors.append(tensor(inp))
-        t = super().__array_ufunc__(ufunc, method, *inputs_as_np, **kwargs)
+
+        # t = super().__array_ufunc__(ufunc, method, *inputs_as_np, **kwargs)
+        t = ufunc(*inputs_as_np, **kwargs).view(Tensor)
         if t is NotImplemented:
             raise NotImplementedError(f"ufunc ({ufunc}) not implemented")
-        parent_tensor = tensor(t)
+        # parent_tensor = tensor(t)
+        parent_tensor = t
         if is_grad_enabled():
             parent_tensor.child_tensors = child_tensors
             parent_tensor.derivative_functions = derivative_functions
@@ -336,7 +349,7 @@ class Tensor(np.ndarray):
             derivative_functions=(lambda p_g, _, __: p_g.squeeze(dim),),
         )
 
-    def squeeze(self, dim: int):
+    def squeeze(self, dim: int = None):
         return self.__array_ufunc__(
             np.squeeze,
             "__call__",
@@ -489,14 +502,15 @@ class Tensor(np.ndarray):
     def update_values(self, new_values) -> None:
         c = self.clone()
         self.__dict__.clear()
-        self.__setstate__(
-            (
-                new_values.shape,
-                new_values.dtype,
-                new_values.flags["F_CONTIGUOUS"],
-                new_values.tobytes(),
-            )
-        )
+        np.copyto(self, new_values)
+        # self.__setstate__(
+        #    (
+        #        new_values.shape,
+        #        new_values.dtype,
+        #        new_values.flags["F_CONTIGUOUS"],
+        #        new_values.tobytes(),
+        #    )
+        # )
         self.__dict__.update(c.__dict__)
 
     def plot_dependency_graph(self, g=None):

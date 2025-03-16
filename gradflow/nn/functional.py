@@ -1,5 +1,7 @@
 from gradflow import Tensor, zeros_like, ones_like
-import numpy as np
+
+# import numpy as np
+import cupy as np
 from typing import Any, Optional
 
 
