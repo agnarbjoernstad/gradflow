@@ -1,6 +1,59 @@
 # CHANGELOG
 
 
+## v0.3.0 (2025-03-16)
+
+### Bug Fixes
+
+* fix: remove main ([`83b6450`](https://github.com/agnarbjoernstad/gradflow/commit/83b64502168301b2accb2fccb9fb2591921c569e))
+
+* fix: do not print dependencies when plotting ([`8f065ca`](https://github.com/agnarbjoernstad/gradflow/commit/8f065ca0db610e73619fe49210db3ffc386b2f4a))
+
+* fix: ensure only gradients for Tensors are computed ([`d45141b`](https://github.com/agnarbjoernstad/gradflow/commit/d45141bf3af57806ea19e57eb2018470353046c4))
+
+* fix: reorganize imports ([`c0b6e82`](https://github.com/agnarbjoernstad/gradflow/commit/c0b6e8272da4867267b6636e5cfa9983b6f6513f))
+
+* fix: ensure that inplace operations are just that ([`97c7460`](https://github.com/agnarbjoernstad/gradflow/commit/97c7460d71d322bd7423dd0fe04757445dd91eea))
+
+* fix: handle broadcast of operations in backward ([`e81c3c8`](https://github.com/agnarbjoernstad/gradflow/commit/e81c3c8565f153269f773e76961fa520222821b1))
+
+### Continuous Integration
+
+* ci: ignore formatting handled by black ([`dd4a515`](https://github.com/agnarbjoernstad/gradflow/commit/dd4a515ebed2a424a3e481940e18e7bfbd8d54de))
+
+* ci: rename lint job ([`a7b6090`](https://github.com/agnarbjoernstad/gradflow/commit/a7b6090ce2cd899a447bda66a116d21492cf546f))
+
+### Documentation
+
+* docs: update example subsubtitles ([`a997056`](https://github.com/agnarbjoernstad/gradflow/commit/a99705679e90c1b947928a7a4f4389a67b76ae17))
+
+* docs: zero gradient in the example optimization problem ([`a319a34`](https://github.com/agnarbjoernstad/gradflow/commit/a319a3421cfe41893bbef232c2f739d8ca7b9d83))
+
+* docs: create roadmap ([`a597bf2`](https://github.com/agnarbjoernstad/gradflow/commit/a597bf215db0824862418084c87063f151d886e8))
+
+### Features
+
+* feat: train sine function ([`6d80158`](https://github.com/agnarbjoernstad/gradflow/commit/6d801582c49f387003642e588d7ade21e5bb746b))
+
+* feat: train on the mnist dataset ([`fefcdee`](https://github.com/agnarbjoernstad/gradflow/commit/fefcdee25a9437b1ca563ea791e36d4f018adb3d))
+
+* feat: implement the Adam optimizer ([`40c0076`](https://github.com/agnarbjoernstad/gradflow/commit/40c0076e4eb0b49b476027bd16b0b7367038f4f0))
+
+* feat: implement linear layer, sequential model and related utilities ([`e973bf5`](https://github.com/agnarbjoernstad/gradflow/commit/e973bf5957f3d2e6035c32305958b61e51558455))
+
+### Performance Improvements
+
+* perf: minor performance increase in topological sort ([`a1f571b`](https://github.com/agnarbjoernstad/gradflow/commit/a1f571b67a7859cad4b9c0c6d2c05e8c23d29ff0))
+
+* perf: remove unnecessary multiplications in derivatives ([`53f7a62`](https://github.com/agnarbjoernstad/gradflow/commit/53f7a62e65880c1a3623702531abd40ce0e0da1e))
+
+### Unknown
+
+* Merge pull request #11 from agnarbjoernstad/nn_linear
+
+Implement basic nn functionality ([`c531450`](https://github.com/agnarbjoernstad/gradflow/commit/c531450ee24e24683b60a63c016ef19927f88de0))
+
+
 ## v0.2.0 (2025-03-06)
 
 ### Code Style
