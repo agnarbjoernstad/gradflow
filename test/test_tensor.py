@@ -109,7 +109,7 @@ def finite_difference(
 ) -> gf.Tensor:
     with no_grad():
         gradient = gf.zeros_like(x)
-        for idx in range(gradient.size):
+        for idx in range(gf.numel(gradient)):
             _x = gf.tensor(x)
             multi_index = np.unravel_index(idx, x.shape)
             f1 = graph(_x)
@@ -252,7 +252,7 @@ def test_autograd_functional_sigmoid():
 
 def test_autograd_functional_softmax():
     t = t_3_f_1
-    for idx in range(t.size):
+    for idx in range(gf.numel(t)):
         _t = t.copy()
         multi_index = np.unravel_index(idx, t.shape)
         approximate_gradient(_t, lambda t: softmax(t, dim=0)[multi_index])

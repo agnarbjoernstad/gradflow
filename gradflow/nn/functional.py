@@ -1,6 +1,6 @@
 from gradflow import Tensor, zeros_like, ones_like
-from typing import Any, Optional
 import numpy as np
+from typing import Any, Optional
 
 
 def relu(input: Tensor, inplace: bool = False) -> Tensor:
@@ -24,3 +24,21 @@ def sigmoid(input: Tensor) -> Tensor:
 
 def softmax(input: Tensor, dim: int, dtype: Optional[Any] = None) -> Tensor:
     return input.softmax(dim, dtype)
+
+
+def linear(input: Tensor, weight: Tensor, bias: Optional[Tensor] = None) -> Tensor:
+    mat_mul = input @ weight
+    if bias is not None:
+        return mat_mul + bias
+    return mat_mul
+
+
+def mse_loss(
+    input: Tensor,
+    target: Tensor,
+) -> Tensor:
+    return (input - target).pow(2).mean()
+
+
+def cross_entropy(input: Tensor, target: Tensor) -> Tensor:
+    return (-target * input.log()).mean()

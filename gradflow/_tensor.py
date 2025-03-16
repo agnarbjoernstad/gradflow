@@ -1,17 +1,22 @@
 from typing import Any, Callable, List, Optional
 from gradflow.autograd.grad_mode import no_grad, is_grad_enabled
+
 from copy import deepcopy
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
 
+def numel(t: "Tensor") -> int:
+    return np.prod(t.shape)
+
+
 def tensor(
     t_obj: List[Any] | float | int | bool | np.ndarray,
     dtype: Optional[np.dtypes] = None,
-    requires_grad: bool = False,
+    requires_grad: bool = True,
 ) -> "Tensor":
-    t_np = np.ascontiguousarray(np.array(t_obj))
+    t_np = np.ascontiguousarray(np.array(t_obj, dtype=dtype))
     if dtype is None:
         dtype = t_np.dtype
     t_np = t_np.astype(dtype)
@@ -276,23 +281,75 @@ class Tensor(np.ndarray):
             ),
         )
 
+    def unsqueeze(self, dim: int):
+        return self.__array_ufunc__(
+            np.expand_dims,
+            "__call__",
+            self,
+            dim,
+            derivative_functions=(
+                lambda p_g, _, __: p_g.squeeze(dim),
+                lambda _, __, ___: None,
+            ),
+        )
+
+    def squeeze(self, dim: int):
+        return self.__array_ufunc__(
+            np.squeeze,
+            "__call__",
+            self,
+            dim,
+            derivative_functions=(
+                lambda p_g, _, __: p_g.unsqueeze(dim),
+                lambda _, __, ___: None,
+            ),
+        )
+
     def __matmul__(self, y):
+        @no_grad
+        def der_l(p_g, _, y):
+            if len(p_g.size()) == 1:
+                p_g = p_g.unsqueeze(0)
+            if len(y.size()) == 1:
+                y = y.unsqueeze(-1)
+            ans = p_g @ y.T
+            return ans
+
+        @no_grad
+        def der_r(p_g, x, _):
+            if len(p_g.size()) == 1:
+                p_g = p_g.unsqueeze(0)
+            if len(x.size()) == 1:
+                x = x.unsqueeze(0)
+            ans = x.T @ p_g
+            return ans
+
         return self.__array_ufunc__(
             np.matmul,
             "__call__",
             self,
             y,
-            derivative_functions=(
-                lambda p_g, _, y: p_g @ y.T,
-                lambda p_g, x, _: (p_g.T @ x).T,
-            ),
+            derivative_functions=(der_l, der_r),
+        )
+
+    def pow(self, p):
+        return self**p
+
+    def sqrt(self):
+        return self.__array_ufunc__(
+            np.sqrt,
+            "__call__",
+            self,
+            derivative_functions=(lambda p_g, x: p_g / (2 * x.sqrt()),),
         )
 
     def sigmoid(self):
         return 1 / (1 + np.e ** (-self))
 
-    def softmax(self, dim: int, dtype: Optional[Any] = None):
-        return np.e**self / np.e ** self.sum(axis=dim, keepdims=True)
+    def softmax(self, dim: Optional[int], dtype: Optional[Any] = None):
+        if dim is None:
+            dim = -1
+        return np.e**self / (np.e**self).sum(axis=dim, keepdims=True)
 
     def __neg__(self):
         return self.__array_ufunc__(
@@ -351,6 +408,14 @@ class Tensor(np.ndarray):
             only_tensors_as_children=True,
         )
 
+    def ascontiguousarray(self):
+        return self.__array_ufunc__(
+            np.ascontiguousarray,
+            "__call__",
+            self,
+            derivative_functions=(lambda p_g, _: p_g,),
+        )
+
     @property
     def T(self):
         return self.__array_ufunc__(
@@ -402,10 +467,53 @@ class Tensor(np.ndarray):
             plt.title("Directed Acyclic Graph (DAG)")
             plt.show()
 
+    @staticmethod
+    def rand(*shape, dtype=None):
+        return tensor(np.random.rand(*shape), dtype=dtype)
 
-def zeros_like(tensor) -> Tensor:
-    return Tensor(tensor.shape, buffer=np.array([0.0] * tensor.size))
+    @staticmethod
+    def zeros(*shape, dtype=None):
+        return tensor(np.zeros(shape), dtype=dtype)
+
+    def dim(self) -> int:
+        return len(self.shape)
+
+    def size(self, dim=None) -> int:
+        if dim is None:
+            return self.shape
+        return self.shape[dim]
+
+    def uniform_(self, from_: float = 0, to_: float = 1):
+        return Tensor.rand(*self.shape, dtype=self.dtype) * (to_ - from_) + from_
+
+    def log(self):
+        return self.__array_ufunc__(
+            np.log,
+            "__call__",
+            self,
+            derivative_functions=(lambda p_g, x: p_g / x,),
+        )
+
+    def detach(self):
+        c = self.clone()
+        c.requires_grad = False
+        return c
+
+    def numpy(self):
+        if self.requires_grad:
+            raise ValueError(
+                "Can't call numpy() on Tensor that requires grad. Use tensor.detach().numpy() instead."
+            )
+        return np.array(self)
 
 
-def ones_like(tensor) -> Tensor:
-    return Tensor(tensor.shape, buffer=np.array([1.0] * tensor.size))
+def zeros_like(t, dtype=None) -> Tensor:
+    if dtype is None:
+        dtype = t.dtype
+    return tensor(np.zeros(t.shape, dtype=dtype))
+
+
+def ones_like(t, dtype=None) -> Tensor:
+    if dtype is None:
+        dtype = t.dtype
+    return tensor(np.ones(t.shape, dtype=dtype))
