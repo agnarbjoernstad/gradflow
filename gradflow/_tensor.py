@@ -63,6 +63,34 @@ def run_backward(t: "Tensor") -> None:
             else:
                 curr_grad = ones_like(node)
             grad = derivative_function(curr_grad, *node.child_tensors)
+
+            # From broadcasting in the numpy docs
+            # (https://numpy.org/doc/stable/user/basics.broadcasting.html#general-broadcasting-rules):
+            # When operating on two arrays, NumPy compares their shapes
+            # element-wise. It starts with the trailing (i.e. rightmost)
+            # dimension and works its way left. Two dimensions are compatible
+            # when they are equal, or one of them is 1.
+            #
+            # Hence, we need to sum over the axis that are scaled up, and expand
+            # the axis that are scaled down.
+
+            longest_shape = max([len(grad.shape), len(node.child_tensors[idx].shape)])
+            grad_shape_ext = [1] * (longest_shape - len(grad.shape)) + list(grad.shape)
+            child_grad_shape_ext = [1] * (
+                longest_shape - len(node.child_tensors[idx].shape)
+            ) + list(node.child_tensors[idx].shape)
+            grad = grad.reshape(grad_shape_ext)
+
+            for i in range(longest_shape):
+                if grad_shape_ext[i] == child_grad_shape_ext[i]:
+                    continue
+                if grad_shape_ext[i] == 1:
+                    grad = np.repeat(grad, child_grad_shape_ext[i], axis=i)
+                else:
+                    grad = grad.sum(axis=i, keepdims=True)
+
+            grad = grad.reshape(node.child_tensors[idx].grad.shape)
+
             node.child_tensors[idx].grad += grad
 
 
