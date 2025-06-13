@@ -29,6 +29,7 @@
  - [ ] nn.Transformer
  - [ ] Train on Titanic
  - [ ] Loading of weights
+ - [X] optim.Muon
 
 
 

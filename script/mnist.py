@@ -2,6 +2,8 @@ from gradflow.nn.modules import linear, container, activation
 from gradflow.nn.modules.loss import CrossEntropyLoss
 from gradflow.autograd.grad_mode import set_grad_enabled
 from gradflow.optim.adam import Adam
+from gradflow.optim.muon import Muon
+from gradflow.optim.combined import CombinedOptimizer
 from gradflow.optim.optimizer import Optimizer
 import argparse
 import gzip
@@ -94,11 +96,19 @@ if __name__ == "__main__":
         "--epochs", type=int, default=10, help="Number of epochs to train."
     )
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate.")
+    parser.add_argument(
+        "--optimizer",
+        type=str,
+        default="adam",
+        choices=["adam", "muon"],
+        help="Optimizer to use.",
+    )
     args = parser.parse_args()
 
     BATCH_SIZE = args.batch_size
     EPOCHS = args.epochs
     LR = args.lr
+    optimizer_choice = args.optimizer
 
     model = container.Sequential(
         linear.Linear(784, 128),
@@ -109,7 +119,15 @@ if __name__ == "__main__":
         activation.Softmax(),
     )
     loss_fn = CrossEntropyLoss()
-    optimizer = Adam(model.parameters(), lr=LR)
+
+    if optimizer_choice == "adam":
+        optimizer = Adam(model.parameters(), lr=LR)
+    elif optimizer_choice == "muon":
+        bias_optimizer = Adam([b for b in model.parameters() if b.ndim == 1], lr=LR)
+        weight_optimizer = Muon(
+            [w for w in model.parameters() if w.ndim == 2], lr=10 * LR
+        )
+        optimizer = CombinedOptimizer([bias_optimizer, weight_optimizer])
 
     mnist_path = "data/mnist"
     train_labels_path = f"{mnist_path}/train-labels-idx1-ubyte.gz"
