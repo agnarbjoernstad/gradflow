@@ -3,6 +3,7 @@ from gradflow.nn.modules.loss import CrossEntropyLoss
 from gradflow.autograd.grad_mode import set_grad_enabled
 from gradflow.optim.adam import Adam
 from gradflow.optim.optimizer import Optimizer
+import argparse
 import gzip
 import numpy as np
 import gradflow as gf
@@ -85,9 +86,19 @@ def run_epoch(
 
 
 if __name__ == "__main__":
-    BATCH_SIZE = 128
-    EPOCHS = 10
-    LR = 0.001
+    parser = argparse.ArgumentParser(description="Train a simple MNIST model.")
+    parser.add_argument(
+        "--batch_size", type=int, default=128, help="Batch size for training."
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=10, help="Number of epochs to train."
+    )
+    parser.add_argument("--lr", type=float, default=0.001, help="Learning rate.")
+    args = parser.parse_args()
+
+    BATCH_SIZE = args.batch_size
+    EPOCHS = args.epochs
+    LR = args.lr
 
     model = container.Sequential(
         linear.Linear(784, 128),
