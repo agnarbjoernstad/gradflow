@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Union
 from gradflow.autograd.grad_mode import no_grad, is_grad_enabled
 
 from copy import deepcopy
@@ -493,6 +493,34 @@ class Tensor(np.ndarray):
 
     def mean(self):
         return self.sum() / self.shape[0]
+
+    def norm(
+        self,
+        p: Optional[Union[float, str]] = "fro",
+        *args,
+        dim=None,
+        keepdim=False,
+        **kwargs,
+    ):
+        if p != "fro":
+            raise NotImplementedError(
+                f"Derivative for norm with p={p} is not implemented."
+            )
+
+        def derivative_function(p_g, x):
+            return p_g * x / np.linalg.norm(x, ord=p, axis=dim, keepdims=keepdim)
+
+        return self.__array_ufunc__(
+            np.linalg.norm,
+            "__call__",
+            self,
+            *args,
+            derivative_functions=(derivative_function,),
+            ord=p,
+            axis=dim,
+            keepdims=keepdim,
+            **kwargs,
+        )
 
     def update_values(self, new_values) -> None:
         c = self.clone()
