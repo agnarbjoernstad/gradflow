@@ -1,13 +1,15 @@
 from gradflow.nn.modules import container, linear, activation
 from gradflow.nn.modules.loss import CrossEntropyLoss, MSELoss
+from gradflow.optim.combined import CombinedOptimizer
 from gradflow.optim.adam import Adam
+from gradflow.optim.muon import Muon
 from gradflow import tensor
 from script.mnist import read_labels, read_images, run_epoch
 from tqdm import tqdm
 import numpy as np
 
 
-def test_train_mnist():
+def train_and_validate_mnist(optimizer_type: str = "adam"):
     np.random.seed(42)
 
     BATCH_SIZE = 128
@@ -23,7 +25,17 @@ def test_train_mnist():
         activation.Softmax(),
     )
     loss_fn = CrossEntropyLoss()
-    optimizer = Adam(model.parameters(), lr=LR)
+
+    if optimizer_type == "adam":
+        optimizer = Adam(model.parameters(), lr=LR)
+    elif optimizer_type == "muon":
+        bias_optimizer = Adam([b for b in model.parameters() if b.ndim == 1], lr=LR)
+        weight_optimizer = Muon(
+            [w for w in model.parameters() if w.ndim == 2], lr=10 * LR
+        )
+        optimizer = CombinedOptimizer([bias_optimizer, weight_optimizer])
+    else:
+        raise ValueError(f"Unknown optimizer type: {optimizer_type}")
 
     mnist_path = "data/mnist"
     train_labels_path = f"{mnist_path}/train-labels-idx1-ubyte.gz"
@@ -67,6 +79,14 @@ def test_train_mnist():
     assert train_accuracy < 0.99
     assert val_accuracy > 0.9
     assert val_accuracy < 0.99
+
+
+def test_train_mnist():
+    train_and_validate_mnist(optimizer_type="adam")
+
+
+def test_train_mnist_muon():
+    train_and_validate_mnist(optimizer_type="muon")
 
 
 def test_train_sin():

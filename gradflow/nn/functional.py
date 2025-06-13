@@ -1,6 +1,6 @@
 from gradflow import Tensor, zeros_like, ones_like
 import numpy as np
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 
 def relu(input: Tensor, inplace: bool = False) -> Tensor:
@@ -31,6 +31,15 @@ def linear(input: Tensor, weight: Tensor, bias: Optional[Tensor] = None) -> Tens
     if bias is not None:
         return mat_mul + bias
     return mat_mul
+
+
+def norm(
+    input: Tensor,
+    p: Optional[Union[float, str]] = "fro",
+    dim: Optional[int] = None,
+    keepdim: bool = False,
+) -> Tensor:
+    return input.norm(p=p, dim=dim, keepdim=keepdim)
 
 
 def mse_loss(

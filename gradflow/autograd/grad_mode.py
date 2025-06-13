@@ -10,12 +10,12 @@ _thread_local._is_grad_enabled = True
 
 
 def _set_grad_mode(new_grad_mode: bool) -> None:
-    global _thread_local
+    global _thread_local  # noqa: F824
     _thread_local._is_grad_enabled = new_grad_mode
 
 
 def is_grad_enabled() -> bool:
-    global _thread_local
+    global _thread_local  # noqa: F824
     return _thread_local._is_grad_enabled
 
 
