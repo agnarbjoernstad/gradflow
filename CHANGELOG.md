@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+## v0.4.0 (2025-06-13)
+
+### Bug Fixes
+
+* fix: silence linter warning ([`0fd85cd`](https://github.com/agnarbjoernstad/gradflow/commit/0fd85cd5cc55e61ea789f216d6e543dabd49f72f))
+
+### Features
+
+* feat: implement the muon optimizer and train it for mnist ([`7298b9a`](https://github.com/agnarbjoernstad/gradflow/commit/7298b9a25520f8c154dafe5ca507fc1b913b9397))
+
+* feat: add arguments for mnist ([`1550bda`](https://github.com/agnarbjoernstad/gradflow/commit/1550bda3bd947c1c4744e0f7caa1f2c7e41226ba))
+
+* feat: implement tensor norm ([`6cc90f8`](https://github.com/agnarbjoernstad/gradflow/commit/6cc90f87f8528a4e99e3a24be17a68d9ddc34495))
+
+### Unknown
+
+* Merge pull request #12 from agnarbjoernstad/muon
+
+Muon ([`25b754a`](https://github.com/agnarbjoernstad/gradflow/commit/25b754a3bb663e931be35fd0f3cb4ee2fdb74448))
+
+
 ## v0.3.0 (2025-03-16)
 
 ### Bug Fixes
